@@ -263,10 +263,10 @@ const OW = 4096, OH = 2048;
 
 // ── Module-level state ────────────────────────────────────────────────────────
 let camera, scene, renderer, controls, globe;
-let overlayCtx, countryTexture, stripePattern;
-let countries  = [];
-let hoveredIdx = null;
-const selected = new Set();
+let overlayCtx, countryTexture;
+let countries   = [];
+let hoveredIdx  = null;
+let selectedIdx = null;
 let prevTime   = performance.now();
 
 // Mutable drawing params (read by redrawCanvas)
@@ -325,7 +325,8 @@ async function init() {
 
   // Globe material
   const globeMat = new THREE.MeshStandardNodeMaterial();
-  globeMat.colorNode = mix(texNode(dayTex), vec3(1), clouds.mul(2));
+  const dayColor = mix(texNode(dayTex), vec3(1), clouds.mul(2));
+  globeMat.colorNode = dayColor;
 
   const roughness = max(texNode(bumpTex).g, step(0.01, clouds));
   globeMat.roughnessNode = roughness.remap(0, 1, uRoughLow, uRoughHigh);
@@ -337,7 +338,9 @@ async function init() {
 
   const atmoDStr = sunOri.smoothstep(-0.5, 1);
   const atmoMix  = atmoDStr.mul(fresnel.pow(2)).clamp(0, 1);
-  let finalOut   = mix(texNode(nightTex).rgb, output.rgb, effectiveDayStr);
+  // uDayNight=1 → PBR-geschaduwde output · uDayNight=0 → kale dagtextuur (geen schaduw)
+  const baseColor = mix(dayColor, output.rgb, uDayNight);
+  let finalOut    = mix(texNode(nightTex).rgb, baseColor, effectiveDayStr);
   finalOut       = mix(finalOut, atmoColor, atmoMix);
   globeMat.outputNode = vec4(finalOut, output.a);
 
@@ -357,7 +360,6 @@ async function init() {
   const oc   = document.createElement('canvas');
   oc.width   = OW; oc.height = OH;
   overlayCtx = oc.getContext('2d');
-  rebuildStripePattern();
 
   countryTexture = new THREE.CanvasTexture(oc);
   countryTexture.colorSpace = THREE.SRGBColorSpace;
@@ -440,7 +442,6 @@ function wireUI() {
 
   $('fill-color').addEventListener('input', e => {
     fillColor = e.target.value;
-    rebuildStripePattern();
     redrawCanvas();
   });
 }
@@ -514,29 +515,15 @@ function onMouseMove({ clientX, clientY }) {
 }
 
 function onMouseDown({ clientX, clientY }) {
-  const ll = hitLonLat(clientX, clientY);
+  const ll  = hitLonLat(clientX, clientY);
   if (!ll) return;
   const idx = getCountryIndex(ll[0], ll[1]);
   if (idx === null) return;
-  selected.has(idx) ? selected.delete(idx) : selected.add(idx);
+  selectedIdx = idx;
   redrawCanvas();
 }
 
 // ── Canvas drawing ────────────────────────────────────────────────────────────
-function rebuildStripePattern() {
-  const pc = document.createElement('canvas');
-  pc.width = 20; pc.height = 20;
-  const pctx = pc.getContext('2d');
-  pctx.fillStyle = fillColor;
-  pctx.fillRect(0, 0, 20, 20);
-  pctx.strokeStyle = '#000';
-  pctx.lineWidth   = 5;
-  for (let i = -20; i <= 40; i += 10) {
-    pctx.beginPath(); pctx.moveTo(i, 0); pctx.lineTo(i + 20, 20); pctx.stroke();
-  }
-  stripePattern = overlayCtx.createPattern(pc, 'repeat');
-}
-
 function lonLatToXY(lon, lat) {
   return [(lon + 180) / 360 * OW, (90 - lat) / 180 * OH];
 }
@@ -568,10 +555,11 @@ function traceFeature(feature) {
 function redrawCanvas() {
   overlayCtx.clearRect(0, 0, OW, OH);
 
-  // Selected countries: diagonal stripe fill
-  overlayCtx.fillStyle = stripePattern;
-  for (const idx of selected) {
-    if (countries[idx]) { traceFeature(countries[idx]); overlayCtx.fill(); }
+  // Selected country: solid fill
+  if (selectedIdx !== null && countries[selectedIdx]) {
+    overlayCtx.fillStyle = fillColor;
+    traceFeature(countries[selectedIdx]);
+    overlayCtx.fill();
   }
 
   // Hovered country: configurable outline
