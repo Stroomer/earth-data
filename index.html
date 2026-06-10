@@ -8,9 +8,10 @@
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
     canvas { display: block; }
+
+    /* ── Info bar ── */
     #info {
-      position: fixed;
-      top: 16px; left: 0; right: 0;
+      position: fixed; top: 16px; left: 0; right: 0;
       text-align: center;
       color: #fff;
       font: 13px/1.6 system-ui, sans-serif;
@@ -19,16 +20,218 @@
       text-shadow: 0 1px 4px rgba(0,0,0,.8);
     }
     #info a { color: #7fc; text-decoration: none; }
+
+    /* ── Settings toggle ── */
+    #toggle-btn {
+      position: fixed; top: 12px; right: 12px; z-index: 200;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(18,18,20,0.82);
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 8px;
+      color: #bbb; cursor: pointer;
+      font-size: 17px; line-height: 1;
+      backdrop-filter: blur(10px);
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    #toggle-btn:hover { background: rgba(50,50,54,0.92); color: #fff; }
+
+    /* ── Panel ── */
+    #panel {
+      position: fixed; top: 54px; right: 12px; z-index: 199;
+      width: 268px;
+      max-height: calc(100dvh - 70px);
+      overflow-y: auto;
+      background: rgba(11,11,13,0.90);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px;
+      backdrop-filter: blur(14px);
+      color: #c8c8c8;
+      font: 12.5px/1.5 system-ui, sans-serif;
+      transition: opacity 0.18s, transform 0.18s;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.12) transparent;
+    }
+    #panel.hidden {
+      opacity: 0;
+      transform: translateX(14px);
+      pointer-events: none;
+    }
+
+    /* ── Section ── */
+    .sec { padding: 10px 14px; }
+    .sec + .sec { border-top: 1px solid rgba(255,255,255,0.06); }
+    .sec-title {
+      font: 600 10px/1 system-ui, sans-serif;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 9px;
+    }
+
+    /* ── Row ── */
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 27px;
+    }
+    .lbl { flex: 1; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ctrl { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .num {
+      min-width: 36px; text-align: right;
+      color: #666; font-variant-numeric: tabular-nums; font-size: 11.5px;
+    }
+
+    /* ── Toggle switch ── */
+    .tog { display: flex; align-items: center; gap: 8px; cursor: pointer; width: 100%; }
+    .tog input[type=checkbox] { position: absolute; opacity: 0; width: 0; height: 0; }
+    .tog-track {
+      width: 30px; height: 16px; flex-shrink: 0;
+      background: #2d2d31;
+      border-radius: 100px;
+      border: 1px solid rgba(255,255,255,0.08);
+      position: relative;
+      transition: background 0.2s;
+    }
+    .tog input:checked ~ .tog-track { background: #2778c4; }
+    .tog-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 10px; height: 10px;
+      background: #777; border-radius: 50%;
+      transition: left 0.18s, background 0.18s;
+    }
+    .tog input:checked ~ .tog-track .tog-thumb { left: calc(100% - 12px); background: #fff; }
+
+    /* ── Range slider ── */
+    input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      width: 96px; height: 3px;
+      border-radius: 2px;
+      background: #2d2d31;
+      outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px; height: 13px; border-radius: 50%;
+      background: #2778c4; border: 2px solid #ddd; cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 13px; height: 13px; border-radius: 50%;
+      background: #2778c4; border: 2px solid #ddd; cursor: pointer;
+    }
+
+    /* ── Color picker ── */
+    input[type=color] {
+      -webkit-appearance: none; appearance: none;
+      width: 26px; height: 20px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 4px; padding: 1px;
+      background: none; cursor: pointer;
+    }
+    input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type=color]::-webkit-color-swatch { border-radius: 3px; border: none; }
+    input[type=color]::-moz-color-swatch { border-radius: 3px; border: none; }
   </style>
 </head>
 <body>
 
 <div id="info">
   <a href="https://threejs.org/" target="_blank" rel="noopener">three.js</a> · WebGPU Earth ·
-  Hover = yellow outline &nbsp;·&nbsp; Click = diagonal fill
+  Hover = outline &nbsp;·&nbsp; Klik = fill
 </div>
 
-<!-- topojson for converting world-atlas topology to GeoJSON -->
+<button id="toggle-btn" title="Instellingen">⚙</button>
+
+<div id="panel">
+
+  <!-- Globus -->
+  <div class="sec">
+    <div class="sec-title">Globus</div>
+
+    <div class="row">
+      <label class="tog">
+        <input type="checkbox" id="auto-rotate" checked>
+        <span class="tog-track"><span class="tog-thumb"></span></span>
+        <span class="lbl">Auto-rotate</span>
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="tog">
+        <input type="checkbox" id="day-night" checked>
+        <span class="tog-track"><span class="tog-thumb"></span></span>
+        <span class="lbl">Dag/nacht verschil</span>
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="tog">
+        <input type="checkbox" id="clouds" checked>
+        <span class="tog-track"><span class="tog-thumb"></span></span>
+        <span class="lbl">Wolken</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Atmosfeer -->
+  <div class="sec">
+    <div class="sec-title">Atmosfeer</div>
+
+    <div class="row">
+      <span class="lbl">Dag kleur</span>
+      <div class="ctrl"><input type="color" id="atmo-day" value="#2e90dc"></div>
+    </div>
+
+    <div class="row">
+      <span class="lbl">Schemering kleur</span>
+      <div class="ctrl"><input type="color" id="atmo-twilight" value="#4c9ea4"></div>
+    </div>
+
+    <div class="row">
+      <span class="lbl">Roughness laag</span>
+      <div class="ctrl">
+        <input type="range" id="roughness-low" min="0" max="1" step="0.001" value="0.495">
+        <span class="num" id="roughness-low-val">0.495</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="lbl">Roughness hoog</span>
+      <div class="ctrl">
+        <input type="range" id="roughness-high" min="0" max="1" step="0.001" value="0.904">
+        <span class="num" id="roughness-high-val">0.904</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Landen -->
+  <div class="sec">
+    <div class="sec-title">Landen</div>
+
+    <div class="row">
+      <span class="lbl">Outline kleur</span>
+      <div class="ctrl"><input type="color" id="outline-color" value="#ffff00"></div>
+    </div>
+
+    <div class="row">
+      <span class="lbl">Outline dikte</span>
+      <div class="ctrl">
+        <input type="range" id="outline-width" min="1" max="20" step="1" value="7">
+        <span class="num" id="outline-width-val">7</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="lbl">Vul kleur</span>
+      <div class="ctrl"><input type="color" id="fill-color" value="#ffff00"></div>
+    </div>
+  </div>
+
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 
 <script type="importmap">
@@ -58,39 +261,45 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // ── Overlay canvas resolution (equirectangular) ───────────────────────────────
 const OW = 4096, OH = 2048;
 
-// ── State ─────────────────────────────────────────────────────────────────────
+// ── Module-level state ────────────────────────────────────────────────────────
 let camera, scene, renderer, controls, globe;
 let overlayCtx, countryTexture, stripePattern;
-let countries   = [];
-let hoveredIdx  = null;
-const selected  = new Set();
-let prevTime    = performance.now();
+let countries  = [];
+let hoveredIdx = null;
+const selected = new Set();
+let prevTime   = performance.now();
 
-// ── Bootstrap ─────────────────────────────────────────────────────────────────
+// Mutable drawing params (read by redrawCanvas)
+let outlineColor = '#ffff00';
+let outlineWidth = 7;
+let fillColor    = '#ffff00';
+let autoRotate   = true;
+
+// TSL uniforms – lifted to module scope so wireUI() can update them
+let uAtmoDay, uAtmoTwilight, uRoughLow, uRoughHigh, uDayNight, uClouds;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
 
-  // Camera
   camera = new THREE.PerspectiveCamera(25, innerWidth / innerHeight, 0.1, 100);
   camera.position.set(4.5, 2, 3);
 
-  // Scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
 
-  // Sun
   const sun = new THREE.DirectionalLight('#ffffff', 2);
   sun.position.set(0, 0, 3);
   scene.add(sun);
 
-  // ── Uniforms (user-specified) ───────────────────────────────────────────────
-  // rgb(46,144,220)  → #2E90DC
-  // rgb(76,158,164)  → #4C9EA4
-  const atmosphereDayColor      = uniform(color('#2e90dc'));
-  const atmosphereTwilightColor = uniform(color('#4c9ea4'));
-  const roughnessLow  = uniform(0.495);
-  const roughnessHigh = uniform(0.904);
+  // Uniforms
+  uAtmoDay      = uniform(color('#2e90dc'));   // rgb(46,144,220)
+  uAtmoTwilight = uniform(color('#4c9ea4'));   // rgb(76,158,164)
+  uRoughLow     = uniform(0.495);
+  uRoughHigh    = uniform(0.904);
+  uDayNight     = uniform(1.0);  // 1 = dag/nacht aan · 0 = alleen dag
+  uClouds       = uniform(1.0);  // 1 = wolken aan    · 0 = wolken uit
 
-  // ── Textures ───────────────────────────────────────────────────────────────
+  // Textures
   const loader = new THREE.TextureLoader();
   const root   = 'https://threejs.org/examples/textures/planets/';
 
@@ -105,60 +314,50 @@ async function init() {
   const bumpTex = loader.load(root + 'earth_bump_roughness_clouds_4096.jpg');
   bumpTex.anisotropy = 8;
 
-  // ── TSL nodes ──────────────────────────────────────────────────────────────
+  // TSL graph
   const viewDir   = positionWorld.sub(cameraPosition).normalize();
   const fresnel   = viewDir.dot(normalWorldGeometry).abs().oneMinus().toVar();
   const sunOri    = normalWorldGeometry.dot(normalize(sun.position)).toVar();
-  const atmoColor = mix(atmosphereTwilightColor, atmosphereDayColor,
-                        sunOri.smoothstep(-0.25, 0.75));
+  const atmoColor = mix(uAtmoTwilight, uAtmoDay, sunOri.smoothstep(-0.25, 0.75));
 
-  // ── Globe material ─────────────────────────────────────────────────────────
-  const globeMat   = new THREE.MeshStandardNodeMaterial();
-  const clouds     = texNode(bumpTex, uv()).b.smoothstep(0.2, 1);
+  // Cloud strength – multiplied by uClouds so toggle zeroes it out
+  const clouds = texNode(bumpTex, uv()).b.smoothstep(0.2, 1).mul(uClouds);
+
+  // Globe material
+  const globeMat = new THREE.MeshStandardNodeMaterial();
   globeMat.colorNode = mix(texNode(dayTex), vec3(1), clouds.mul(2));
 
-  const roughness  = max(texNode(bumpTex).g, step(0.01, clouds));
-  globeMat.roughnessNode = roughness.remap(0, 1, roughnessLow, roughnessHigh);
+  const roughness = max(texNode(bumpTex).g, step(0.01, clouds));
+  globeMat.roughnessNode = roughness.remap(0, 1, uRoughLow, uRoughHigh);
+  globeMat.normalNode    = bumpMap(max(texNode(bumpTex).r, clouds));
 
-  const night    = texNode(nightTex);
-  const dayStr   = sunOri.smoothstep(-0.25, 0.5);
+  // Day/night mix: uDayNight=1 → normal mix · uDayNight=0 → always day (factor=1)
+  const dayStr         = sunOri.smoothstep(-0.25, 0.5);
+  const effectiveDayStr = dayStr.mul(uDayNight).add(uDayNight.oneMinus());
+
   const atmoDStr = sunOri.smoothstep(-0.5, 1);
   const atmoMix  = atmoDStr.mul(fresnel.pow(2)).clamp(0, 1);
-  let   finalOut = mix(night.rgb, output.rgb, dayStr);
+  let finalOut   = mix(texNode(nightTex).rgb, output.rgb, effectiveDayStr);
   finalOut       = mix(finalOut, atmoColor, atmoMix);
   globeMat.outputNode = vec4(finalOut, output.a);
-  globeMat.normalNode = bumpMap(max(texNode(bumpTex).r, clouds));
 
   const sphereGeo = new THREE.SphereGeometry(1, 64, 64);
   globe = new THREE.Mesh(sphereGeo, globeMat);
   scene.add(globe);
 
-  // ── Atmosphere ─────────────────────────────────────────────────────────────
-  const atmoMat = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, transparent: true });
+  // Atmosphere shell
+  const atmoMat   = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, transparent: true });
   const atmoAlpha = fresnel.remap(0.73, 1, 1, 0).pow(3).mul(sunOri.smoothstep(-0.5, 1));
   atmoMat.outputNode = vec4(atmoColor, atmoAlpha);
   const atmosphere = new THREE.Mesh(sphereGeo, atmoMat);
   atmosphere.scale.setScalar(1.04);
   scene.add(atmosphere);
 
-  // ── Country overlay canvas ─────────────────────────────────────────────────
-  const oc     = document.createElement('canvas');
-  oc.width     = OW;
-  oc.height    = OH;
-  overlayCtx   = oc.getContext('2d');
-
-  // Diagonal yellow/black stripe pattern (20×20 tile)
-  const pc = document.createElement('canvas');
-  pc.width  = 20; pc.height = 20;
-  const pctx = pc.getContext('2d');
-  pctx.fillStyle = '#ffff00';
-  pctx.fillRect(0, 0, 20, 20);
-  pctx.strokeStyle = '#000';
-  pctx.lineWidth   = 5;
-  for (let i = -20; i <= 40; i += 10) {
-    pctx.beginPath(); pctx.moveTo(i, 0); pctx.lineTo(i + 20, 20); pctx.stroke();
-  }
-  stripePattern = overlayCtx.createPattern(pc, 'repeat');
+  // Country overlay canvas (equirectangular projection)
+  const oc   = document.createElement('canvas');
+  oc.width   = OW; oc.height = OH;
+  overlayCtx = oc.getContext('2d');
+  rebuildStripePattern();
 
   countryTexture = new THREE.CanvasTexture(oc);
   countryTexture.colorSpace = THREE.SRGBColorSpace;
@@ -166,38 +365,87 @@ async function init() {
   const overlayMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
   overlayMat.outputNode = texNode(countryTexture, uv());
 
-  // Child of globe → co-rotates; slightly larger to avoid z-fighting
-  const overlayMesh = new THREE.Mesh(new THREE.SphereGeometry(1.003, 64, 64), overlayMat);
-  globe.add(overlayMesh);
+  // Child of globe → co-rotates; 1.003 avoids z-fighting
+  globe.add(new THREE.Mesh(new THREE.SphereGeometry(1.003, 64, 64), overlayMat));
 
-  // ── Renderer ───────────────────────────────────────────────────────────────
+  // Renderer
   renderer = new THREE.WebGPURenderer({ antialias: true });
   renderer.setPixelRatio(devicePixelRatio);
   renderer.setSize(innerWidth, innerHeight);
   renderer.setAnimationLoop(animate);
   document.body.appendChild(renderer.domElement);
 
-  // ── Controls ───────────────────────────────────────────────────────────────
+  // Orbit controls
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.minDistance   = 1.5;
   controls.maxDistance   = 20;
 
-  // ── Events ─────────────────────────────────────────────────────────────────
+  // Globe interaction events
   window.addEventListener('resize', onResize);
   renderer.domElement.addEventListener('mousemove',  onMouseMove);
   renderer.domElement.addEventListener('mousedown',  onMouseDown);
   renderer.domElement.addEventListener('mouseleave', () => {
     if (hoveredIdx !== null) { hoveredIdx = null; redrawCanvas(); }
   });
-  renderer.domElement.addEventListener('touchmove',  onTouchMove,  { passive: false });
-  renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: false });
+  renderer.domElement.addEventListener('touchmove',  e => { e.preventDefault(); onMouseMove(e.touches[0]); }, { passive: false });
+  renderer.domElement.addEventListener('touchstart', e => { e.preventDefault(); onMouseDown(e.touches[0]); }, { passive: false });
 
-  // ── Load country data ──────────────────────────────────────────────────────
+  wireUI();
   await loadCountries();
 }
 
-// ── GeoJSON data ──────────────────────────────────────────────────────────────
+// ── UI wiring ─────────────────────────────────────────────────────────────────
+function wireUI() {
+  const $ = id => document.getElementById(id);
+
+  // Panel toggle button
+  $('toggle-btn').addEventListener('click', () => $('panel').classList.toggle('hidden'));
+
+  // Globus
+  $('auto-rotate').addEventListener('change', e => { autoRotate = e.target.checked; });
+
+  $('day-night').addEventListener('change', e => { uDayNight.value = e.target.checked ? 1 : 0; });
+
+  $('clouds').addEventListener('change', e => { uClouds.value = e.target.checked ? 1 : 0; });
+
+  // Atmosfeer
+  $('atmo-day').addEventListener('input', e => { uAtmoDay.value.set(e.target.value); });
+
+  $('atmo-twilight').addEventListener('input', e => { uAtmoTwilight.value.set(e.target.value); });
+
+  $('roughness-low').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    uRoughLow.value = v;
+    $('roughness-low-val').textContent = v.toFixed(3);
+  });
+
+  $('roughness-high').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    uRoughHigh.value = v;
+    $('roughness-high-val').textContent = v.toFixed(3);
+  });
+
+  // Landen
+  $('outline-color').addEventListener('input', e => {
+    outlineColor = e.target.value;
+    redrawCanvas();
+  });
+
+  $('outline-width').addEventListener('input', e => {
+    outlineWidth = parseInt(e.target.value, 10);
+    $('outline-width-val').textContent = outlineWidth;
+    redrawCanvas();
+  });
+
+  $('fill-color').addEventListener('input', e => {
+    fillColor = e.target.value;
+    rebuildStripePattern();
+    redrawCanvas();
+  });
+}
+
+// ── Country data ──────────────────────────────────────────────────────────────
 async function loadCountries() {
   try {
     const res  = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
@@ -208,7 +456,7 @@ async function loadCountries() {
   }
 }
 
-// ── Point-in-polygon (ray-casting) ────────────────────────────────────────────
+// ── Point-in-polygon (ray-casting algorithm) ──────────────────────────────────
 function pointInRing(lon, lat, ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -235,20 +483,15 @@ function getCountryIndex(lon, lat) {
 }
 
 // ── 3-D world-point → [lon, lat] ─────────────────────────────────────────────
-// Converts a point on the globe sphere (world space) to geographic coordinates,
-// accounting for the globe's current rotation.
+// SphereGeometry: x = -cos(φ)·sin(θ), z = sin(φ)·sin(θ)  →  φ = atan2(z, -x)
+// u = φ/(2π), u=0 → lon=−180° (antimeridian at −X axis)
 function worldPtToLonLat(worldPt) {
   globe.updateWorldMatrix(true, false);
   const p = globe.worldToLocal(worldPt.clone()).normalize();
-
   const lat = Math.asin(Math.max(-1, Math.min(1, p.y))) * 180 / Math.PI;
-
-  // SphereGeometry: x = sin(θ)·cos(φ), z = sin(θ)·sin(φ)
-  // φ = atan2(z, x); UV u = φ/(2π), u=0 → lon=-180
-  let phi = Math.atan2(p.z, p.x);
+  let phi = Math.atan2(p.z, -p.x);          // -p.x omdat SphereGeometry x = -cos(φ)
   if (phi < 0) phi += 2 * Math.PI;
-  const lon = phi * 180 / Math.PI - 180;
-  return [lon, lat];
+  return [phi * 180 / Math.PI - 180, lat];
 }
 
 // ── Raycasting ────────────────────────────────────────────────────────────────
@@ -257,16 +500,13 @@ const ndc       = new THREE.Vector2();
 
 function hitLonLat(clientX, clientY) {
   const { left, top, width, height } = renderer.domElement.getBoundingClientRect();
-  ndc.set(
-    ((clientX - left) / width)  * 2 - 1,
-   -((clientY - top)  / height) * 2 + 1
-  );
+  ndc.set(((clientX - left) / width) * 2 - 1, -((clientY - top) / height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
   const hits = raycaster.intersectObject(globe);
   return hits.length ? worldPtToLonLat(hits[0].point) : null;
 }
 
-// ── Event handlers ────────────────────────────────────────────────────────────
+// ── Interaction handlers ──────────────────────────────────────────────────────
 function onMouseMove({ clientX, clientY }) {
   const ll  = hitLonLat(clientX, clientY);
   const idx = ll ? getCountryIndex(ll[0], ll[1]) : null;
@@ -282,30 +522,31 @@ function onMouseDown({ clientX, clientY }) {
   redrawCanvas();
 }
 
-function onTouchMove(e) {
-  e.preventDefault();
-  onMouseMove(e.touches[0]);
-}
-function onTouchStart(e) {
-  e.preventDefault();
-  onMouseDown(e.touches[0]);
+// ── Canvas drawing ────────────────────────────────────────────────────────────
+function rebuildStripePattern() {
+  const pc = document.createElement('canvas');
+  pc.width = 20; pc.height = 20;
+  const pctx = pc.getContext('2d');
+  pctx.fillStyle = fillColor;
+  pctx.fillRect(0, 0, 20, 20);
+  pctx.strokeStyle = '#000';
+  pctx.lineWidth   = 5;
+  for (let i = -20; i <= 40; i += 10) {
+    pctx.beginPath(); pctx.moveTo(i, 0); pctx.lineTo(i + 20, 20); pctx.stroke();
+  }
+  stripePattern = overlayCtx.createPattern(pc, 'repeat');
 }
 
-// ── Canvas drawing helpers ────────────────────────────────────────────────────
 function lonLatToXY(lon, lat) {
-  return [
-    (lon + 180) / 360 * OW,
-    (90  - lat) / 180 * OH,
-  ];
+  return [(lon + 180) / 360 * OW, (90 - lat) / 180 * OH];
 }
 
-// Trace all rings of a GeoJSON feature into the current canvas path.
-// Antimeridian jumps (Δx > half canvas) become moveTo instead of lineTo.
+// Trace all rings of one GeoJSON feature into a single canvas path.
+// Large Δx jumps at the antimeridian become moveTo to avoid cross-canvas lines.
 function traceFeature(feature) {
   const geom = feature.geometry;
   if (!geom) return;
   const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
-
   overlayCtx.beginPath();
   for (const poly of polys) {
     for (const ring of poly) {
@@ -327,20 +568,16 @@ function traceFeature(feature) {
 function redrawCanvas() {
   overlayCtx.clearRect(0, 0, OW, OH);
 
-  // Selected countries: diagonal yellow-black fill
+  // Selected countries: diagonal stripe fill
   overlayCtx.fillStyle = stripePattern;
   for (const idx of selected) {
-    if (countries[idx]) {
-      traceFeature(countries[idx]);
-      overlayCtx.fill();
-    }
+    if (countries[idx]) { traceFeature(countries[idx]); overlayCtx.fill(); }
   }
 
-  // Hovered country: 3-pixel-wide yellow outline
-  // lineWidth 7 on a 4096px canvas ≈ 3 screen-pixels at typical viewing distance
+  // Hovered country: configurable outline
   if (hoveredIdx !== null && countries[hoveredIdx]) {
-    overlayCtx.strokeStyle = '#ffff00';
-    overlayCtx.lineWidth   = 7;
+    overlayCtx.strokeStyle = outlineColor;
+    overlayCtx.lineWidth   = outlineWidth;
     overlayCtx.lineJoin    = 'round';
     traceFeature(countries[hoveredIdx]);
     overlayCtx.stroke();
@@ -362,7 +599,7 @@ async function animate() {
   const delta = (now - prevTime) / 1000;
   prevTime    = now;
 
-  globe.rotation.y += delta * 0.025;
+  if (autoRotate) globe.rotation.y += delta * 0.025;
   controls.update();
   renderer.render(scene, camera);
 }
